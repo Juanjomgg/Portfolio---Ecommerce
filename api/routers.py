@@ -21,11 +21,9 @@ order_router = Router(tags=["Orders"], auth=JWTAuth())  # All order routes are p
 # Añadir los endpoints de JWT
 @user_router.post("/token", response=TokenSchema|ErrorMessageSchema, auth=None)
 def obtain_token(request, data: TokenRequest):
-    print("[DEBUG] Payload recibido en /token:", data)
     user = authenticate(email=data.email, password=data.password)  # Usar email como campo de login
     if user is None:
         return ErrorMessageSchema(detail="Invalid credentials")
-
     refresh = RefreshToken.for_user(user)
     values = {}
     values['access'] = str(refresh.access_token)
@@ -134,14 +132,5 @@ def get_order(request, order_id: int):
         user=user # Asegura que el usuario solo pueda ver sus propios pedidos
     )
     return order
-
-@user_router.post("/debug", auth=None)
-def debug_body(request):
-    print("[DEBUG] Body crudo:", request.body)
-    return {"received": True}
-
-@user_router.get("/ping", auth=None)
-def ping(request):
-    return {"pong": True}
 
 # Más endpoints (PUT/DELETE para productos si eres admin, cambiar estado de orden, etc.) pueden añadirse.

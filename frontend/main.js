@@ -39,13 +39,32 @@ function login() {
   document.getElementById("login-error").textContent = "";
   showLoading(btn, true);
 
-  fetch(`${API_URL}/api/users/ping`)
-    .then(res => res.json())
-    .then(data => {
-      alert('Respuesta del backend: ' + JSON.stringify(data));
+  fetch(`${API_URL}/api/users/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  })
+    .then(res => res.json().then(data => ({ status: res.status, data })))
+    .then(({ status, data }) => {
+      showLoading(btn, false);
+      if (status === 200 && data.access) {
+        accessToken = data.access;
+        userEmail = email;
+        document.getElementById("login-form").style.display = "none";
+        document.getElementById("pedido-form").style.display = "block";
+        document.getElementById("login-error").textContent = "";
+        document.getElementById("user-info").style.display = "block";
+        document.getElementById("user-info").textContent = `Usuario logueado: ${userEmail}`;
+        // Limpiar campos
+        document.getElementById("email").value = "";
+        document.getElementById("password").value = "";
+      } else {
+        document.getElementById("login-error").textContent = data.detail || "Error de autenticación";
+      }
     })
     .catch(() => {
-      alert('Error de red o backend');
+      showLoading(btn, false);
+      document.getElementById("login-error").textContent = "Error de red";
     });
 }
 
