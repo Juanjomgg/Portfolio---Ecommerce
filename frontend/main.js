@@ -39,7 +39,7 @@ function login() {
   document.getElementById("login-error").textContent = "";
   showLoading(btn, true);
 
-  fetch(`${API_URL}/api/users/token`, {
+  fetch(`${API_URL}/api/users/debug`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
