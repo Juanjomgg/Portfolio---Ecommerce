@@ -135,4 +135,9 @@ def get_order(request, order_id: int):
     )
     return order
 
+@user_router.post("/debug", auth=None)
+def debug_body(request):
+    print("[DEBUG] Body crudo:", request.body)
+    return {"received": True}
+
 # Más endpoints (PUT/DELETE para productos si eres admin, cambiar estado de orden, etc.) pueden añadirse.
