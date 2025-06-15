@@ -21,6 +21,7 @@ order_router = Router(tags=["Orders"], auth=JWTAuth())  # All order routes are p
 # Añadir los endpoints de JWT
 @user_router.post("/token", response=TokenSchema|ErrorMessageSchema, auth=None)
 def obtain_token(request, data: TokenRequest):
+    print("[DEBUG] Payload recibido en /token:", data)
     user = authenticate(email=data.email, password=data.password)  # Usar email como campo de login
     if user is None:
         return ErrorMessageSchema(detail="Invalid credentials")
