@@ -39,7 +39,7 @@ function login() {
   document.getElementById("login-error").textContent = "";
   showLoading(btn, true);
 
-  fetch(`${API_URL}/users/token`, {
+  fetch(`${API_URL}/api/users/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
@@ -91,7 +91,7 @@ function crearPedido() {
   showLoading(btn, true);
 
   const items = productos.map((id, i) => ({ product_id: parseInt(id), quantity: cantidades[i] }));
-  fetch(`${API_URL}/orders/`, {
+  fetch(`${API_URL}/api/orders/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
