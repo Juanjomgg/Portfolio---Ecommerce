@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',  # For serving static files in development
     'ninja',
     'api',
+    'corsheaders',  # Django CORS Headers
 ]
 
 MIDDLEWARE = [
@@ -55,6 +56,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Django CORS Headers
 ]
 
 ROOT_URLCONF = 'ecommerce.urls'
@@ -164,3 +166,6 @@ AUTHENTICATION_BACKENDS = [
     'api.email_backend.EmailBackend',  # Login por email
     'django.contrib.auth.backends.ModelBackend',  # Login por username (fallback)
 ]
+
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = True  # Permitir cualquier origen (ajusta en producción)
