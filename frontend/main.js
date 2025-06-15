@@ -2,6 +2,8 @@
 const API_URL = "https://portfolio-ecommerce.onrender.com";
 let accessToken = null;
 let userEmail = null;
+let productosDisponibles = [];
+let carrito = [];
 
 function showLoading(btn, loading) {
   if (loading) {
@@ -55,6 +57,7 @@ function login() {
         document.getElementById("login-error").textContent = "";
         document.getElementById("user-info").style.display = "block";
         document.getElementById("user-info").textContent = `Usuario logueado: ${userEmail}`;
+        cargarProductos();
         // Limpiar campos
         document.getElementById("email").value = "";
         document.getElementById("password").value = "";
@@ -68,36 +71,72 @@ function login() {
     });
 }
 
-function crearPedido() {
-  const productos = document.getElementById("productos").value.split(",").map(x => x.trim());
-  const cantidades = document.getElementById("cantidades").value.split(",").map(x => parseInt(x.trim()));
-  const btn = document.querySelector('#pedido-form button');
-  btn.dataset.originalText = btn.textContent;
+function cargarProductos() {
+  fetch(`${API_URL}/api/products/`, {
+    headers: { "Authorization": `Bearer ${accessToken}` }
+  })
+    .then(res => res.json())
+    .then(data => {
+      productosDisponibles = data;
+      const select = document.getElementById("producto-select");
+      select.innerHTML = "";
+      productosDisponibles.forEach(prod => {
+        const option = document.createElement("option");
+        option.value = prod.id;
+        option.textContent = prod.name || `Producto ${prod.id}`;
+        select.appendChild(option);
+      });
+    })
+    .catch(() => {
+      document.getElementById("pedido-error").textContent = "Error al cargar productos";
+    });
+}
 
-  // Validación
-  if (productos.length === 0 || cantidades.length === 0 || productos.some(x => !x) || cantidades.some(isNaN)) {
-    document.getElementById("pedido-error").textContent = "IDs y cantidades deben ser números válidos.";
+function agregarAlCarrito() {
+  const select = document.getElementById("producto-select");
+  const cantidad = parseInt(document.getElementById("producto-cantidad").value);
+  const prodId = parseInt(select.value);
+  if (!prodId || isNaN(cantidad) || cantidad <= 0) {
+    document.getElementById("pedido-error").textContent = "Selecciona producto y cantidad válida.";
     return;
   }
-  if (productos.length !== cantidades.length) {
-    document.getElementById("pedido-error").textContent = "IDs y cantidades deben coincidir.";
-    return;
+  const prod = productosDisponibles.find(p => p.id === prodId);
+  if (!prod) return;
+  const existente = carrito.find(item => item.product_id === prodId);
+  if (existente) {
+    existente.quantity += cantidad;
+  } else {
+    carrito.push({ product_id: prodId, name: prod.name, quantity: cantidad });
   }
-  if (cantidades.some(q => q <= 0)) {
-    document.getElementById("pedido-error").textContent = "Las cantidades deben ser mayores que cero.";
-    return;
-  }
+  mostrarCarrito();
   document.getElementById("pedido-error").textContent = "";
-  showLoading(btn, true);
+}
 
-  const items = productos.map((id, i) => ({ product_id: parseInt(id), quantity: cantidades[i] }));
+function mostrarCarrito() {
+  const ul = document.getElementById("carrito-lista");
+  ul.innerHTML = "";
+  carrito.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = `${item.name} (x${item.quantity})`;
+    ul.appendChild(li);
+  });
+}
+
+function comprarCarrito() {
+  if (carrito.length === 0) {
+    document.getElementById("pedido-error").textContent = "El carrito está vacío.";
+    return;
+  }
+  const btn = document.querySelector('#pedido-form button[onclick="comprarCarrito()"]');
+  btn.dataset.originalText = btn.textContent;
+  showLoading(btn, true);
   fetch(`${API_URL}/api/orders/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${accessToken}`
     },
-    body: JSON.stringify({ items })
+    body: JSON.stringify({ items: carrito.map(({product_id, quantity}) => ({product_id, quantity})) })
   })
     .then(res => res.json().then(data => ({ status: res.status, data })))
     .then(({ status, data }) => {
@@ -105,9 +144,8 @@ function crearPedido() {
       if (status === 200 && data.id) {
         document.getElementById("pedido-success").textContent = `Pedido creado con ID: ${data.id}`;
         document.getElementById("pedido-error").textContent = "";
-        // Limpiar campos
-        document.getElementById("productos").value = "";
-        document.getElementById("cantidades").value = "";
+        carrito = [];
+        mostrarCarrito();
       } else {
         document.getElementById("pedido-error").textContent = data.detail || "Error al crear pedido";
         document.getElementById("pedido-success").textContent = "";

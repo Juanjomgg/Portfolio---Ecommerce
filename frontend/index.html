@@ -29,7 +29,7 @@
       text-align: center;
       color: #2d3a4b;
     }
-    input, button {
+    input, button, select {
       width: 100%;
       padding: 0.7em;
       margin: 0.5em 0;
@@ -85,11 +85,16 @@
     </div>
     <div id="pedido-form" style="display:none;">
       <h2>Crear Pedido</h2>
-      <label>IDs de productos (separados por coma):</label>
-      <input type="text" id="productos" placeholder="Ej: 1,2,3">
-      <label>Cantidades (separadas por coma):</label>
-      <input type="text" id="cantidades" placeholder="Ej: 2,1,5">
-      <button onclick="crearPedido()">Crear Pedido</button>
+      <div id="pedido-productos">
+        <label>Producto:</label>
+        <select id="producto-select"></select>
+        <label>Cantidad:</label>
+        <input type="number" id="producto-cantidad" min="1" value="1">
+        <button type="button" onclick="agregarAlCarrito()">Agregar al carrito</button>
+      </div>
+      <h3>Carrito</h3>
+      <ul id="carrito-lista"></ul>
+      <button type="button" onclick="comprarCarrito()">Comprar</button>
       <div id="pedido-error" class="error"></div>
       <div id="pedido-success" class="success"></div>
     </div>
