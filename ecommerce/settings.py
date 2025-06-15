@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0j!@ydvr$px_@yr0v9v+ib!gqbfaetat6xggolg7_&bln(e9y='
+#SECRET_KEY = 'django-insecure-0j!@ydvr$px_@yr0v9v+ib!gqbfaetat6xggolg7_&bln(e9y='
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+#DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -37,6 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'whitenoise.runserver_nostatic',  # For serving static files in development
+    'ninja',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -47,6 +51,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Configuración de WhiteNoise para archivos estáticos
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
 ]
 
 ROOT_URLCONF = 'ecommerce.urls'
@@ -72,6 +80,17 @@ WSGI_APPLICATION = 'ecommerce.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+from dotenv import load_dotenv
+import dj_database_url
+
+load_dotenv()
+
+SECRET_KEY=os.getenv('SECRET_KEY', "clave_por_defecto")
+DEBUG= os.getenv('DEBUG', 'False').lower() == 'true'
+
+
+# Database configuration
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -79,6 +98,16 @@ DATABASES = {
     }
 }
 
+# Try to use DATABASE_URL if it is configured
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    try:
+        DATABASES['default'] = dj_database_url.parse(database_url, conn_max_age=600)
+    except Exception as e:
+        print(f"Error connecting to PostgreSQL: {e}")
+        print("Falling back to SQLite...")
+
+AUTH_USER_MODEL = 'api.CustomUser'  # Usar el modelo de usuario personalizado
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -114,9 +143,24 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# Habilitar el almacenamiento de WhiteNoise
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# JWT Settings
+NINJA_JWT = {
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Duración del token de acceso
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Duración del token de refresco
+}
+
+AUTHENTICATION_BACKENDS = [
+    'api.email_backend.EmailBackend',  # Login por email
+    'django.contrib.auth.backends.ModelBackend',  # Login por username (fallback)
+]
