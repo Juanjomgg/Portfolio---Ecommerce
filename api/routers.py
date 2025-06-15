@@ -140,4 +140,8 @@ def debug_body(request):
     print("[DEBUG] Body crudo:", request.body)
     return {"received": True}
 
+@user_router.get("/ping", auth=None)
+def ping(request):
+    return {"pong": True}
+
 # Más endpoints (PUT/DELETE para productos si eres admin, cambiar estado de orden, etc.) pueden añadirse.
