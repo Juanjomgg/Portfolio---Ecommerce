@@ -1,5 +1,5 @@
 // Cambia esta URL por la de tu API en Render
-const API_URL = "https://TU-API.onrender.com/api";
+const API_URL = "https://portfolio-ecommerce.onrender.com";
 let accessToken = null;
 let userEmail = null;
 
