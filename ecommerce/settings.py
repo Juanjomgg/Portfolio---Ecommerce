@@ -169,3 +169,6 @@ AUTHENTICATION_BACKENDS = [
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Permitir cualquier origen (ajusta en producción)
+CORS_ALLOWED_ORIGINS = [
+    "https://portfolio-ecommerce.onrender.com",
+]
