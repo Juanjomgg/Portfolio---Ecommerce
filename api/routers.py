@@ -20,10 +20,15 @@ from django.http import HttpResponse
 from functools import wraps
 import time
 from Crypto.PublicKey import RSA
+from Crypto.Util.Padding import unpad
+# Cambiamos a PKCS1_v1_5 para compatibilidad con JSEncrypt
+from Crypto.Cipher import PKCS1_v1_5
 from Crypto.Cipher import PKCS1_OAEP
 import base64
 from ninja import Schema
 import os
+
+
 
 # ----- Routers -----
 product_router = Router(tags=["Products"], auth=JWTAuth())  # Protected routes except list and get
@@ -71,6 +76,9 @@ def rate_limit(key_prefix, limit=5, period=60):
         return wrapped_view
     return decorator
 
+
+
+
 # Generar par de claves RSA si no existe
 KEY_PATH = os.path.join(os.path.dirname(__file__), 'private_key.pem')
 if not os.path.exists(KEY_PATH):
@@ -95,9 +103,6 @@ def obtain_token(request, data: EncryptedTokenRequest):
         if not data.encrypted_password:
             return ErrorMessageSchema(detail="No password provided")
 
-        # Crear nuevo objeto cipher para cada petición
-        cipher = PKCS1_OAEP.new(key)
-        
         try:
             # Intentar decodificar el base64
             encrypted_bytes = base64.b64decode(data.encrypted_password)
@@ -106,12 +111,21 @@ def obtain_token(request, data: EncryptedTokenRequest):
             return ErrorMessageSchema(detail="Invalid password format")
             
         try:
+            # Usar PKCS1_v1_5 para compatibilidad con JSEncrypt
+            cipher = PKCS1_v1_5.new(key)
+            sentinel = None  # Para PKCS1_v1_5
+            
             # Intentar descifrar
-            password = cipher.decrypt(encrypted_bytes)
+            password_bytes = cipher.decrypt(encrypted_bytes, sentinel)
+            if password_bytes is None:
+                raise ValueError("Decryption failed")
+                
             # Intentar decodificar como UTF-8
-            password = password.decode('utf-8')
+            password = password_bytes.decode('utf-8')
+            print(f"Successfully decrypted password of length: {len(password)}")
+            
         except Exception as e:
-            print(f"Decryption error: {str(e)}")
+            print(f"Decryption error details: {str(e)}")
             return ErrorMessageSchema(detail="Decryption failed")
             
         if not password:
