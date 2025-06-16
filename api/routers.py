@@ -27,6 +27,8 @@ from Crypto.Cipher import PKCS1_OAEP
 import base64
 from ninja import Schema
 import os
+# Intentar descifrar con un centinela aleatorio
+from os import urandom
 
 
 
@@ -99,35 +101,34 @@ def get_public_key(request):
 @user_router.post("/token", response=TokenSchema|ErrorMessageSchema, auth=None)
 @rate_limit("login", limit=5, period=300)  # 5 intentos cada 5 minutos
 def obtain_token(request, data: EncryptedTokenRequest):
-    try:
-        if not data.encrypted_password:
-            return ErrorMessageSchema(detail="No password provided")
+    if not data.encrypted_password:
+        return ErrorMessageSchema(detail="No password provided")
 
+    try:
+        # Intentar decodificar el base64
         try:
-            # Intentar decodificar el base64
             encrypted_bytes = base64.b64decode(data.encrypted_password)
         except Exception as e:
             print(f"Base64 decode error: {str(e)}")
             return ErrorMessageSchema(detail="Invalid password format")
-            
-        try:
-            # Usar PKCS1_v1_5 para compatibilidad con JSEncrypt
-            cipher = PKCS1_v1_5.new(key)
-            sentinel = None  # Para PKCS1_v1_5
-            
-            # Intentar descifrar
-            password_bytes = cipher.decrypt(encrypted_bytes, sentinel)
-            if password_bytes is None:
-                raise ValueError("Decryption failed")
-                
-            # Intentar decodificar como UTF-8
-            password = password_bytes.decode('utf-8')
-            print(f"Successfully decrypted password of length: {len(password)}")
-            
-        except Exception as e:
-            print(f"Decryption error details: {str(e)}")
-            return ErrorMessageSchema(detail="Decryption failed")
-            
+
+        # Usar PKCS1_v1_5 para compatibilidad con JSEncrypt
+        cipher = PKCS1_v1_5.new(key)
+        
+        # Imprimir información de debug
+        print(f"Encrypted data length: {len(encrypted_bytes)}")
+        print(f"First few bytes: {encrypted_bytes[:10]}")
+        
+        sentinel = urandom(32)  # Usar un centinela aleatorio
+        password_bytes = cipher.decrypt(encrypted_bytes, sentinel)
+        
+        if password_bytes == sentinel:
+            raise ValueError("Decryption failed - got sentinel value")
+        
+        # Intentar decodificar como UTF-8
+        password = password_bytes.decode('utf-8')
+        print(f"Successfully decrypted password of length: {len(password)}")
+        
         if not password:
             return ErrorMessageSchema(detail="Empty password after decryption")
             
@@ -149,8 +150,13 @@ def obtain_token(request, data: EncryptedTokenRequest):
         )
         
         return response
+        
+    except ValueError as e:
+        print(f"Decryption validation error: {str(e)}")
+        return ErrorMessageSchema(detail="Invalid encrypted data - decryption failed")
     except Exception as e:
-        return ErrorMessageSchema(detail="Invalid encrypted data")
+        print(f"Detailed error: {type(e).__name__} - {str(e)}")
+        return ErrorMessageSchema(detail="Decryption error")
 
 @user_router.post("/token/refresh", response=TokenSchema, auth=None)
 def refresh_token(request):

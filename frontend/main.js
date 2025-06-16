@@ -63,26 +63,41 @@ async function login() {
   
   try {
     // Obtener la clave pública
-    const pubKey = await getPublicKey();
-      // Cifrar la contraseña
+    const pubKey = await getPublicKey();    // Limpiar y validar la clave pública
+    const cleanPubKey = pubKey.trim()
+      .replace(/\\n/g, '')
+      .replace(/-----(BEGIN|END) PUBLIC KEY-----/g, '')
+      .trim();
+    
+    // Cifrar la contraseña
     const encrypt = new JSEncrypt();
-    encrypt.setPublicKey(pubKey);
+    encrypt.setPublicKey(cleanPubKey);
     
     // Asegurarnos de que la clave pública se configuró correctamente
     if (!encrypt.getPublicKey()) {
+      console.error('Public key validation failed');
       throw new Error('Public key not set correctly');
     }
     
     // Cifrar la contraseña
     const encrypted_password = encrypt.encrypt(password);
-    console.log('Public key used:', pubKey);
+    console.log('Public key format OK');
     
     // Si el cifrado falla
     if (!encrypted_password) {
+      console.error('Encryption returned null or empty');
       throw new Error('Encryption failed');
     }
     
-    console.log('Encrypted password length:', encrypted_password.length);
+    // Verificar que el resultado es base64 válido
+    try {
+      atob(encrypted_password); // Intentar decodificar para validar
+      console.log('Encrypted result is valid base64');
+      console.log('Encrypted length:', encrypted_password.length);
+    } catch (e) {
+      console.error('Invalid base64 output:', e);
+      throw new Error('Invalid encryption result');
+    }
     // Enviar credenciales con la contraseña cifrada
     const response = await fetch(`${API_URL}/api/users/token`, {
       method: "POST",
