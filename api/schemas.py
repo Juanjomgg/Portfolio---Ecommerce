@@ -71,3 +71,11 @@ class RefreshTokenSchema(Schema):
 # Schema para mensajes de error
 class ErrorMessageSchema(Schema):
     detail: str
+
+# Schemas para encriptación RSA
+class PublicKeySchema(Schema):
+    key: str
+
+class EncryptedTokenRequest(Schema):
+    email: str
+    encrypted_password: str

@@ -10,7 +10,8 @@ from .schemas import (
     ProductSchema, ProductCreateSchema,
     OrderSchema, OrderCreateSchema, OrderItemCreateSchema,
     UserSchema, UserCreateSchema,
-    TokenSchema, TokenRequest, RefreshTokenSchema, ErrorMessageSchema
+    TokenSchema, TokenRequest, RefreshTokenSchema, ErrorMessageSchema,
+    PublicKeySchema, EncryptedTokenRequest
 )
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -18,6 +19,11 @@ from django.core.cache import cache
 from django.http import HttpResponse
 from functools import wraps
 import time
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+import base64
+from ninja import Schema
+import os
 
 # ----- Routers -----
 product_router = Router(tags=["Products"], auth=JWTAuth())  # Protected routes except list and get
@@ -65,29 +71,52 @@ def rate_limit(key_prefix, limit=5, period=60):
         return wrapped_view
     return decorator
 
+# Generar par de claves RSA si no existe
+KEY_PATH = os.path.join(os.path.dirname(__file__), 'private_key.pem')
+if not os.path.exists(KEY_PATH):
+    key = RSA.generate(2048)
+    with open(KEY_PATH, 'wb') as f:
+        f.write(key.export_key('PEM'))
+else:
+    with open(KEY_PATH, 'rb') as f:
+        key = RSA.import_key(f.read())
+
+@user_router.get("/public-key", response=PublicKeySchema, auth=None)
+def get_public_key(request):
+    """Retorna la clave pública RSA en formato PEM"""
+    public_key = key.publickey().export_key('PEM').decode()
+    return PublicKeySchema(key=public_key)
+
 # Añadir los endpoints de JWT
 @user_router.post("/token", response=TokenSchema|ErrorMessageSchema, auth=None)
 @rate_limit("login", limit=5, period=300)  # 5 intentos cada 5 minutos
-def obtain_token(request, data: TokenRequest):
-    user = authenticate(email=data.email, password=data.password)  # Usar email como campo de login
-    if user is None:
-        return ErrorMessageSchema(detail="Invalid credentials")
+def obtain_token(request, data: EncryptedTokenRequest):
+    try:
+        # Descifrar la contraseña
+        cipher = PKCS1_OAEP.new(key)
+        encrypted_bytes = base64.b64decode(data.encrypted_password)
+        password = cipher.decrypt(encrypted_bytes).decode()
+        
+        # Autenticar usuario
+        user = authenticate(email=data.email, password=password)
+        if user is None:
+            return ErrorMessageSchema(detail="Invalid credentials")
 
-    refresh = RefreshToken.for_user(user)
-    
-    # Configurar la cookie segura para el refresh token
-    response = TokenSchema(access=str(refresh.access_token))
-    response.set_cookie(
-        key='refresh_token',
-        value=str(refresh),
-        httponly=True,
-        secure=True,  # Solo HTTPS
-        samesite='Lax',
-        max_age=7 * 24 * 60 * 60,  # 7 días
-        path='/api/users/token/refresh'  # Solo accesible para el endpoint de refresh
-    )
-    
-    return response
+        refresh = RefreshToken.for_user(user)
+        response = TokenSchema(access=str(refresh.access_token))
+        response.set_cookie(
+            key='refresh_token',
+            value=str(refresh),
+            httponly=True,
+            secure=True,
+            samesite='Lax',
+            max_age=7 * 24 * 60 * 60,
+            path='/api/users/token/refresh'
+        )
+        
+        return response
+    except Exception as e:
+        return ErrorMessageSchema(detail="Invalid encrypted data")
 
 @user_router.post("/token/refresh", response=TokenSchema, auth=None)
 def refresh_token(request):

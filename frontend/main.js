@@ -4,6 +4,7 @@ let accessToken = null;
 let userEmail = null;
 let productosDisponibles = [];
 let carrito = [];
+let publicKey = null;
 
 function showLoading(btn, loading) {
   if (loading) {
@@ -23,7 +24,25 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function login() {
+// Función para obtener la clave pública
+async function getPublicKey() {
+  if (publicKey) return publicKey;
+  
+  try {
+    const response = await fetch(`${API_URL}/api/users/public-key`, {
+      credentials: 'include',
+      mode: 'cors'
+    });
+    const data = await response.json();
+    publicKey = data.key;
+    return publicKey;
+  } catch (error) {
+    console.error('Error fetching public key:', error);
+    throw new Error('Could not fetch encryption key');
+  }
+}
+
+async function login() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
   const btn = document.querySelector('#login-form button');
@@ -38,41 +57,61 @@ function login() {
     document.getElementById("login-error").textContent = "Introduce una contraseña válida.";
     return;
   }
+  
   document.getElementById("login-error").textContent = "";
-  showLoading(btn, true);  fetch(`${API_URL}/api/users/token`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Accept": "application/json"
-    },
-    credentials: 'include',  // Necesario para cookies
-    mode: 'cors',  // Explícitamente indicar que es una petición CORS
-    body: JSON.stringify({ email, password })
-  })
-    .then(res => res.json().then(data => ({ status: res.status, data })))
-    .then(({ status, data }) => {
-      showLoading(btn, false);
-      if (status === 200 && data.access) {
-        accessToken = data.access;
-        userEmail = email;
-        document.getElementById("login-form").style.display = "none";
-        document.getElementById("pedido-form").style.display = "block";
-        document.getElementById("login-error").textContent = "";
-        document.getElementById("user-info").style.display = "block";
-        document.getElementById("logout-btn").style.display = "block";
-        document.getElementById("user-info").textContent = `Usuario logueado: ${userEmail}`;
-        cargarProductos();
-        // Limpiar campos
-        document.getElementById("email").value = "";
-        document.getElementById("password").value = "";
-      } else {
-        document.getElementById("login-error").textContent = data.detail || "Error de autenticación";
-      }
-    })
-    .catch(() => {
-      showLoading(btn, false);
-      document.getElementById("login-error").textContent = "Error de red";
+  showLoading(btn, true);
+  
+  try {
+    // Obtener la clave pública
+    const pubKey = await getPublicKey();
+    
+    // Cifrar la contraseña
+    const encrypt = new JSEncrypt();
+    encrypt.setPublicKey(pubKey);
+    const encrypted_password = encrypt.encrypt(password);
+    
+    // Si el cifrado falla
+    if (!encrypted_password) {
+      throw new Error('Encryption failed');
+    }
+    // Enviar credenciales con la contraseña cifrada
+    const response = await fetch(`${API_URL}/api/users/token`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      credentials: 'include',
+      mode: 'cors',
+      body: JSON.stringify({ 
+        email, 
+        encrypted_password: encrypted_password 
+      })
     });
+
+    const data = await response.json();
+    if (response.ok && data.access) {
+      accessToken = data.access;
+      userEmail = email;
+      document.getElementById("login-form").style.display = "none";
+      document.getElementById("pedido-form").style.display = "block";
+      document.getElementById("login-error").textContent = "";
+      document.getElementById("user-info").style.display = "block";
+      document.getElementById("logout-btn").style.display = "block";
+      document.getElementById("user-info").textContent = `Usuario logueado: ${userEmail}`;
+      // Limpiar campos
+      document.getElementById("email").value = "";
+      document.getElementById("password").value = "";
+      await cargarProductos();
+    } else {
+      throw new Error(data.detail || "Error de autenticación");
+    }
+  } catch (error) {
+    console.error('Error during login:', error);
+    document.getElementById("login-error").textContent = error.message || "Error de red o autenticación";
+  } finally {
+    showLoading(btn, false);
+  }
 }
 
 // Función para actualizar el token cuando expire
@@ -129,28 +168,33 @@ async function fetchWithAuth(url, options = {}) {
   }
 }
 
-function cargarProductos() {
-  fetchWithAuth(`${API_URL}/api/products/`)
-    .then(res => res.json())
-    .then(data => {
-      productosDisponibles = data;
-      const select = document.getElementById("producto-select");
-      select.innerHTML = "";
-      productosDisponibles.forEach(prod => {
-        if (prod.stock_quantity > 0) {  // Solo mostrar productos con stock
-          const option = document.createElement("option");
-          option.value = prod.id;
-          option.textContent = `${prod.title} (Stock: ${prod.stock_quantity})`;
-          select.appendChild(option);
-        }
-      });
-      if (select.options.length === 0) {
-        document.getElementById("pedido-error").textContent = "No hay productos con stock disponible.";
+async function cargarProductos() {
+  try {
+    const response = await fetchWithAuth(`${API_URL}/api/products/`);
+    const data = await response.json();
+    
+    productosDisponibles = data;
+    const select = document.getElementById("producto-select");
+    select.innerHTML = "";
+    
+    productosDisponibles.forEach(prod => {
+      if (prod.stock_quantity > 0) {  // Solo mostrar productos con stock
+        const option = document.createElement("option");
+        option.value = prod.id;
+        option.textContent = `${prod.title} (Stock: ${prod.stock_quantity})`;
+        select.appendChild(option);
       }
-    })
-    .catch(() => {
-      document.getElementById("pedido-error").textContent = "Error al cargar productos";
     });
+    
+    if (select.options.length === 0) {
+      document.getElementById("pedido-error").textContent = "No hay productos con stock disponible.";
+    } else {
+      document.getElementById("pedido-error").textContent = "";
+    }
+  } catch (error) {
+    console.error('Error loading products:', error);
+    document.getElementById("pedido-error").textContent = "Error al cargar productos";
+  }
 }
 
 function agregarAlCarrito() {
@@ -196,37 +240,41 @@ function mostrarCarrito() {
   });
 }
 
-function comprarCarrito() {
+async function comprarCarrito() {
   if (carrito.length === 0) {
     document.getElementById("pedido-error").textContent = "El carrito está vacío.";
     return;
   }
+
   const btn = document.querySelector('#pedido-form button[onclick="comprarCarrito()"]');
   btn.dataset.originalText = btn.textContent;
   showLoading(btn, true);
   
-  fetchWithAuth(`${API_URL}/api/orders/`, {
-    method: "POST",
-    body: JSON.stringify({ items: carrito.map(({product_id, quantity}) => ({product_id, quantity})) })
-  })
-    .then(res => res.json().then(data => ({ status: res.status, data })))
-    .then(({ status, data }) => {
-      showLoading(btn, false);
-      if (status === 200 && data.id) {
-        document.getElementById("pedido-success").textContent = `Pedido creado con ID: ${data.id}`;
-        document.getElementById("pedido-error").textContent = "";
-        carrito = [];
-        mostrarCarrito();
-      } else {
-        document.getElementById("pedido-error").textContent = data.detail || "Error al crear pedido";
-        document.getElementById("pedido-success").textContent = "";
-      }
-    })
-    .catch(() => {
-      showLoading(btn, false);
-      document.getElementById("pedido-error").textContent = "Error de red";
-      document.getElementById("pedido-success").textContent = "";
+  try {
+    const response = await fetchWithAuth(`${API_URL}/api/orders/`, {
+      method: "POST",
+      body: JSON.stringify({ 
+        items: carrito.map(({product_id, quantity}) => ({product_id, quantity})) 
+      })
     });
+
+    const data = await response.json();
+    if (response.ok && data.id) {
+      document.getElementById("pedido-success").textContent = `Pedido creado con ID: ${data.id}`;
+      document.getElementById("pedido-error").textContent = "";
+      carrito = [];
+      mostrarCarrito();
+      await cargarProductos(); // Recargar productos para actualizar stock
+    } else {
+      throw new Error(data.detail || "Error al crear pedido");
+    }
+  } catch (error) {
+    console.error('Error creating order:', error);
+    document.getElementById("pedido-error").textContent = error.message || "Error de red";
+    document.getElementById("pedido-success").textContent = "";
+  } finally {
+    showLoading(btn, false);
+  }
 }
 
 function logout() {
