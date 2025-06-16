@@ -35,9 +35,17 @@ def rate_limit(key_prefix, limit=5, period=60):
     def decorator(view_func):
         @wraps(view_func)
         def wrapped_view(request, *args, **kwargs):
-            # Get client IP
+            # Get client IP and sanitize it
             ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
-            key = f"rate_limit:{key_prefix}:{ip}"
+            if ip:
+                # Tomar solo la primera IP si hay varias
+                ip = ip.split(',')[0].strip()
+                # Reemplazar caracteres no válidos para memcached
+                ip = ip.replace(' ', '_').replace(':', '_')
+            else:
+                ip = 'unknown'
+            
+            key = f"rl_{key_prefix}_{ip}"  # Formato seguro para memcached
             
             # Get current requests count
             requests = cache.get(key, [])

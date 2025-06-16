@@ -214,3 +214,11 @@ AUTHENTICATION_BACKENDS = [
     'api.email_backend.EmailBackend',  # Login por email
     'django.contrib.auth.backends.ModelBackend',  # Login por username (fallback)
 ]
+
+# Cache settings
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
