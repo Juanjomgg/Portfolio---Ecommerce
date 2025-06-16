@@ -104,23 +104,32 @@ def obtain_token(request, data: EncryptedTokenRequest):
     if not data.encrypted_password:
         return ErrorMessageSchema(detail="No password provided")
 
+    print("=== Debug Info ===")
+    print(f"Email: {data.email}")
+    print(f"Encrypted password length: {len(data.encrypted_password)}")
+    print(f"First 50 chars of encrypted: {data.encrypted_password[:50]}")
+    
     try:
         # Intentar decodificar el base64
         try:
             encrypted_bytes = base64.b64decode(data.encrypted_password)
+            print(f"Base64 decode successful, got {len(encrypted_bytes)} bytes")
         except Exception as e:
             print(f"Base64 decode error: {str(e)}")
             return ErrorMessageSchema(detail="Invalid password format")
 
+        # Verificar que tenemos la clave privada correcta
+        print(f"Private key info: {key.size_in_bits()} bits, {key.size_in_bytes()} bytes")
+        
         # Usar PKCS1_v1_5 para compatibilidad con JSEncrypt
         cipher = PKCS1_v1_5.new(key)
         
         # Imprimir información de debug
-        print(f"Encrypted data length: {len(encrypted_bytes)}")
-        print(f"First few bytes: {encrypted_bytes[:10]}")
+        print(f"Encrypted data hex: {encrypted_bytes.hex()[:32]}...")
         
         sentinel = urandom(32)  # Usar un centinela aleatorio
         password_bytes = cipher.decrypt(encrypted_bytes, sentinel)
+        print("Decryption attempt completed")
         
         if password_bytes == sentinel:
             raise ValueError("Decryption failed - got sentinel value")

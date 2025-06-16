@@ -61,17 +61,20 @@ async function login() {
   document.getElementById("login-error").textContent = "";
   showLoading(btn, true);
   
-  try {
-    // Obtener la clave pública
-    const pubKey = await getPublicKey();    // Limpiar y validar la clave pública
-    const cleanPubKey = pubKey.trim()
-      .replace(/\\n/g, '')
-      .replace(/-----(BEGIN|END) PUBLIC KEY-----/g, '')
-      .trim();
+  try {    // Obtener la clave pública
+    const pubKey = await getPublicKey();
+    console.log('Received public key:', pubKey);  // Ver la clave pública completa
+    
+    // No eliminar los headers de la clave pública, son necesarios
+    const cleanPubKey = pubKey.trim();
+    console.log('Public key length:', cleanPubKey.length);
     
     // Cifrar la contraseña
     const encrypt = new JSEncrypt();
     encrypt.setPublicKey(cleanPubKey);
+    
+    // Log para debug
+    console.log('Public key set:', encrypt.getPublicKey() ? 'OK' : 'Failed');
     
     // Asegurarnos de que la clave pública se configuró correctamente
     if (!encrypt.getPublicKey()) {
