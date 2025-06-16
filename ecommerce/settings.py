@@ -154,20 +154,36 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = False  # Más seguro, solo permitir orígenes específicos
+CORS_ALLOWED_ORIGINS = [
+    "https://portfolio-ecommerce.onrender.com",
+]
+CORS_ALLOW_CREDENTIALS = True  # Permitir envío de cookies
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+
+# Configuración de cookies
+SESSION_COOKIE_SECURE = True  # Solo enviar cookies por HTTPS
+CSRF_COOKIE_SECURE = True  # Solo enviar cookies CSRF por HTTPS
+SESSION_COOKIE_HTTPONLY = True  # Prevenir acceso a cookies via JavaScript
+CSRF_COOKIE_HTTPONLY = True  # Prevenir acceso a cookies CSRF via JavaScript
+CSRF_COOKIE_SAMESITE = 'Lax'  # Protección contra CSRF
+SESSION_COOKIE_SAMESITE = 'Lax'  # Protección contra CSRF
+
 # JWT Settings
 NINJA_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Duración del token de acceso
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Duración del token de refresco
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'AUTH_COOKIE': 'refresh_token',  # Nombre de la cookie del refresh token
+    'AUTH_COOKIE_DOMAIN': None,  # Dominio de la cookie (None = mismo dominio)
+    'AUTH_COOKIE_SECURE': True,  # Cookie solo por HTTPS
+    'AUTH_COOKIE_HTTP_ONLY': True,  # Cookie no accesible por JavaScript
+    'AUTH_COOKIE_PATH': '/api/users/token/refresh',  # Path de la cookie
+    'AUTH_COOKIE_SAMESITE': 'Lax',  # Protección contra CSRF
 }
 
 AUTHENTICATION_BACKENDS = [
     'api.email_backend.EmailBackend',  # Login por email
     'django.contrib.auth.backends.ModelBackend',  # Login por username (fallback)
-]
-
-# CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Permitir cualquier origen (ajusta en producción)
-CORS_ALLOWED_ORIGINS = [
-    "https://portfolio-ecommerce.onrender.com",
 ]

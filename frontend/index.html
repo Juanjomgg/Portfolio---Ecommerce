@@ -65,6 +65,14 @@
       color: #1976d2;
       font-weight: bold;
     }
+    #logout-btn {
+      background: #d32f2f;
+      margin-bottom: 1.5em;
+      max-width: 200px;
+    }
+    #logout-btn:hover {
+      background: #b71c1c;
+    }
     @media (max-width: 500px) {
       .container { padding: 1em 0.5em; }
       h1 { font-size: 1.3em; }
@@ -76,6 +84,7 @@
   <div class="container">
     <h1>Demo Login y Creación de Pedidos</h1>
     <div id="user-info" style="display:none;"></div>
+    <button id="logout-btn" onclick="logout()" style="display:none;">Cerrar sesión</button>
     <div id="login-form">
       <h2>Login</h2>
       <input type="email" id="email" placeholder="Email" required autocomplete="username">

@@ -12,32 +12,96 @@ from .schemas import (
     UserSchema, UserCreateSchema,
     TokenSchema, TokenRequest, RefreshTokenSchema, ErrorMessageSchema
 )
+from datetime import datetime, timedelta
+from django.conf import settings
+from django.core.cache import cache
+from django.http import HttpResponse
+from functools import wraps
+import time
 
 # ----- Routers -----
 product_router = Router(tags=["Products"], auth=JWTAuth())  # Protected routes except list and get
 user_router = Router(tags=["Users"])
 order_router = Router(tags=["Orders"], auth=JWTAuth())  # All order routes are protected
 
+# Rate limiting decorator
+def rate_limit(key_prefix, limit=5, period=60):
+    """
+    Rate limiting decorator
+    :param key_prefix: Prefix for the cache key
+    :param limit: Number of allowed requests per period
+    :param period: Time period in seconds
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(request, *args, **kwargs):
+            # Get client IP
+            ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
+            key = f"rate_limit:{key_prefix}:{ip}"
+            
+            # Get current requests count
+            requests = cache.get(key, [])
+            now = time.time()
+            
+            # Clean old requests
+            requests = [req for req in requests if req > now - period]
+            
+            if len(requests) >= limit:
+                return {"detail": "Too many requests"}, 429
+            
+            # Add current request
+            requests.append(now)
+            cache.set(key, requests, period)
+            
+            return view_func(request, *args, **kwargs)
+        return wrapped_view
+    return decorator
+
 # Añadir los endpoints de JWT
 @user_router.post("/token", response=TokenSchema|ErrorMessageSchema, auth=None)
+@rate_limit("login", limit=5, period=300)  # 5 intentos cada 5 minutos
 def obtain_token(request, data: TokenRequest):
     user = authenticate(email=data.email, password=data.password)  # Usar email como campo de login
     if user is None:
         return ErrorMessageSchema(detail="Invalid credentials")
+
     refresh = RefreshToken.for_user(user)
-    values = {}
-    values['access'] = str(refresh.access_token)
-    values['refresh'] = str(refresh)
-    return TokenSchema(**values)
+    
+    # Configurar la cookie segura para el refresh token
+    response = TokenSchema(access=str(refresh.access_token))
+    response.set_cookie(
+        key='refresh_token',
+        value=str(refresh),
+        httponly=True,
+        secure=True,  # Solo HTTPS
+        samesite='Lax',
+        max_age=7 * 24 * 60 * 60,  # 7 días
+        path='/api/users/token/refresh'  # Solo accesible para el endpoint de refresh
+    )
+    
+    return response
 
 @user_router.post("/token/refresh", response=TokenSchema, auth=None)
-def refresh_token(request, data: RefreshTokenSchema):
+def refresh_token(request):
     try:
-        refresh_token = RefreshToken(data.refresh)
-        return TokenSchema(
-            access=str(refresh_token.access_token),
-            refresh=str(refresh_token)
+        refresh_token_cookie = request.COOKIES.get('refresh_token')
+        if not refresh_token_cookie:
+            return {"detail": "No refresh token cookie"}, 401
+            
+        refresh_token = RefreshToken(refresh_token_cookie)
+        response = TokenSchema(access=str(refresh_token.access_token))
+        
+        # Renovar también la cookie del refresh token
+        response.set_cookie(
+            key='refresh_token',
+            value=str(refresh_token),
+            httponly=True,
+            secure=True,
+            samesite='Lax',
+            max_age=7 * 24 * 60 * 60,
+            path='/api/users/token/refresh'
         )
+        return response
     except Exception as e:
         return {"detail": "Invalid refresh token"}, 401
 

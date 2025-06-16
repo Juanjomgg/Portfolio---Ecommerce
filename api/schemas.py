@@ -20,7 +20,7 @@ class UserCreateSchema(Schema): # Para creación, solo necesitamos lo esencial y
 class ProductSchema(ModelSchema):
     class Config:
         model = Product
-        model_fields = '__all__' # Incluye todos los campos del modelo
+        model_fields = ['id', 'title', 'description', 'price', 'stock_quantity']  # Incluimos explícitamente stock_quantity
 
 class ProductCreateSchema(ModelSchema): # Para creación, no necesitamos id, created_at, updated_at
     class Config:
@@ -63,8 +63,7 @@ class TokenRequest(Schema):
     password: str
 
 class TokenSchema(Schema):
-    access: str
-    refresh: str
+    access: str  # Solo devolvemos el access token
 
 class RefreshTokenSchema(Schema):
     refresh: str
