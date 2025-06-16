@@ -92,11 +92,31 @@ def get_public_key(request):
 @rate_limit("login", limit=5, period=300)  # 5 intentos cada 5 minutos
 def obtain_token(request, data: EncryptedTokenRequest):
     try:
-        # Descifrar la contraseña
+        if not data.encrypted_password:
+            return ErrorMessageSchema(detail="No password provided")
+
+        # Crear nuevo objeto cipher para cada petición
         cipher = PKCS1_OAEP.new(key)
-        encrypted_bytes = base64.b64decode(data.encrypted_password)
-        password = cipher.decrypt(encrypted_bytes).decode()
         
+        try:
+            # Intentar decodificar el base64
+            encrypted_bytes = base64.b64decode(data.encrypted_password)
+        except Exception as e:
+            print(f"Base64 decode error: {str(e)}")
+            return ErrorMessageSchema(detail="Invalid password format")
+            
+        try:
+            # Intentar descifrar
+            password = cipher.decrypt(encrypted_bytes)
+            # Intentar decodificar como UTF-8
+            password = password.decode('utf-8')
+        except Exception as e:
+            print(f"Decryption error: {str(e)}")
+            return ErrorMessageSchema(detail="Decryption failed")
+            
+        if not password:
+            return ErrorMessageSchema(detail="Empty password after decryption")
+            
         # Autenticar usuario
         user = authenticate(email=data.email, password=password)
         if user is None:

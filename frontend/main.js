@@ -64,16 +64,25 @@ async function login() {
   try {
     // Obtener la clave pública
     const pubKey = await getPublicKey();
-    
-    // Cifrar la contraseña
+      // Cifrar la contraseña
     const encrypt = new JSEncrypt();
     encrypt.setPublicKey(pubKey);
+    
+    // Asegurarnos de que la clave pública se configuró correctamente
+    if (!encrypt.getPublicKey()) {
+      throw new Error('Public key not set correctly');
+    }
+    
+    // Cifrar la contraseña
     const encrypted_password = encrypt.encrypt(password);
+    console.log('Public key used:', pubKey);
     
     // Si el cifrado falla
     if (!encrypted_password) {
       throw new Error('Encryption failed');
     }
+    
+    console.log('Encrypted password length:', encrypted_password.length);
     // Enviar credenciales con la contraseña cifrada
     const response = await fetch(`${API_URL}/api/users/token`, {
       method: "POST",
