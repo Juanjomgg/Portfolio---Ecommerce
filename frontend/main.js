@@ -39,11 +39,14 @@ function login() {
     return;
   }
   document.getElementById("login-error").textContent = "";
-  showLoading(btn, true);
-  fetch(`${API_URL}/api/users/token`, {
+  showLoading(btn, true);  fetch(`${API_URL}/api/users/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
     credentials: 'include',  // Necesario para cookies
+    mode: 'cors',  // Explícitamente indicar que es una petición CORS
     body: JSON.stringify({ email, password })
   })
     .then(res => res.json().then(data => ({ status: res.status, data })))
@@ -96,9 +99,11 @@ async function fetchWithAuth(url, options = {}) {
   options.headers = {
     ...options.headers,
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
   };
   options.credentials = 'include';  // Siempre incluir cookies
+  options.mode = 'cors';  // Siempre usar CORS
 
   try {
     let response = await fetch(url, options);
