@@ -80,8 +80,6 @@ def rate_limit(key_prefix, limit=5, period=60):
     return decorator
 
 
-
-
 # Generar par de claves RSA si no existe
 KEY_PATH = os.path.join(os.path.dirname(__file__), 'private_key.pem')
 if not os.path.exists(KEY_PATH):
@@ -151,17 +149,16 @@ def obtain_token(request, data: EncryptedTokenRequest):
         # Crear una respuesta personalizada con Response de ninja
         response = Response(
             {"access": str(refresh.access_token)},
-            status=200,
-            cookies={
-                "refresh_token": {
-                    "value": str(refresh),
-                    "httponly": True,
-                    "secure": True,
-                    "samesite": "Lax",
-                    "max_age": 7 * 24 * 60 * 60,
-                    "path": "/api/users/token/refresh"
-                }
-            }
+            status=200
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=str(refresh),
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+            max_age=7 * 24 * 60 * 60,
+            path="/api/users/token/refresh"
         )
         return response
         
@@ -182,17 +179,16 @@ def refresh_token(request):
         refresh_token = RefreshToken(refresh_token_cookie)
         response = Response(
             {"access": str(refresh_token.access_token)},
-            status=200,
-            cookies={
-                "refresh_token": {
-                    "value": str(refresh_token),
-                    "httponly": True,
-                    "secure": True,
-                    "samesite": "Lax",
-                    "max_age": 7 * 24 * 60 * 60,
-                    "path": "/api/users/token/refresh"
-                }
-            }
+            status=200
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=str(refresh_token),
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+            max_age=7 * 24 * 60 * 60,
+            path="/api/users/token/refresh"
         )
         return response
     except Exception as e:
@@ -289,5 +285,3 @@ def get_order(request, order_id: int):
         user=user # Asegura que el usuario solo pueda ver sus propios pedidos
     )
     return order
-
-# Más endpoints (PUT/DELETE para productos si eres admin, cambiar estado de orden, etc.) pueden añadirse.
