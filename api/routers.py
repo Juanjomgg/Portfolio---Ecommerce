@@ -2,6 +2,7 @@ from typing import List
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from ninja import Router
+from ninja.responses import Response
 from ninja_jwt.authentication import JWTAuth
 from ninja_jwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
@@ -147,17 +148,21 @@ def obtain_token(request, data: EncryptedTokenRequest):
             return ErrorMessageSchema(detail="Invalid credentials")
 
         refresh = RefreshToken.for_user(user)
-        response = TokenSchema(access=str(refresh.access_token))
-        response.set_cookie(
-            key='refresh_token',
-            value=str(refresh),
-            httponly=True,
-            secure=True,
-            samesite='Lax',
-            max_age=7 * 24 * 60 * 60,
-            path='/api/users/token/refresh'
+        # Crear una respuesta personalizada con Response de ninja
+        response = Response(
+            {"access": str(refresh.access_token)},
+            status=200,
+            cookies={
+                "refresh_token": {
+                    "value": str(refresh),
+                    "httponly": True,
+                    "secure": True,
+                    "samesite": "Lax",
+                    "max_age": 7 * 24 * 60 * 60,
+                    "path": "/api/users/token/refresh"
+                }
+            }
         )
-        
         return response
         
     except ValueError as e:
@@ -175,17 +180,19 @@ def refresh_token(request):
             return {"detail": "No refresh token cookie"}, 401
             
         refresh_token = RefreshToken(refresh_token_cookie)
-        response = TokenSchema(access=str(refresh_token.access_token))
-        
-        # Renovar también la cookie del refresh token
-        response.set_cookie(
-            key='refresh_token',
-            value=str(refresh_token),
-            httponly=True,
-            secure=True,
-            samesite='Lax',
-            max_age=7 * 24 * 60 * 60,
-            path='/api/users/token/refresh'
+        response = Response(
+            {"access": str(refresh_token.access_token)},
+            status=200,
+            cookies={
+                "refresh_token": {
+                    "value": str(refresh_token),
+                    "httponly": True,
+                    "secure": True,
+                    "samesite": "Lax",
+                    "max_age": 7 * 24 * 60 * 60,
+                    "path": "/api/users/token/refresh"
+                }
+            }
         )
         return response
     except Exception as e:
