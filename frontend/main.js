@@ -249,7 +249,7 @@ function agregarAlCarrito() {
   if (existente) {
     existente.stock_quantity += cantidad;
   } else {
-    carrito.push({ id: prodId, name: prod.title, stock_quantity: cantidad });
+    carrito.push({ id: prodId, title: prod.title, stock_quantity: cantidad });
   }
   
   mostrarCarrito();
