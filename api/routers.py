@@ -156,7 +156,7 @@ def obtain_token(request, data: EncryptedTokenRequest):
             value=str(refresh),
             httponly=True,
             secure=True,
-            samesite="Lax",
+            samesite="None",
             max_age=7 * 24 * 60 * 60,
             path="/api/users/token/refresh"
         )
