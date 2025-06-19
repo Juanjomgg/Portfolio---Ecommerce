@@ -22,6 +22,16 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("pedido-form").style.display = "block";
     document.getElementById("login-form").style.display = "none";
   }
+
+  document.getElementById("ver-pedidos-btn").onclick = function() {
+    document.getElementById("pedido-form").style.display = "none";
+    document.getElementById("pedidos-usuario").style.display = "block";
+    cargarPedidosUsuario();
+  };
+  document.getElementById("volver-crear-pedido-btn").onclick = function() {
+    document.getElementById("pedidos-usuario").style.display = "none";
+    document.getElementById("pedido-form").style.display = "block";
+  };
 });
 
 // Función para obtener la clave pública
@@ -124,7 +134,7 @@ async function login() {
       document.getElementById("pedido-form").style.display = "block";
       document.getElementById("login-error").textContent = "";
       document.getElementById("user-info").style.display = "block";
-      document.getElementById("logout-btn").style.display = "block";
+      document.getElementById("logout-btn").style.display = "flex";
       document.getElementById("user-info").textContent = `Usuario logueado: ${userEmail}`;
       // Limpiar campos
       document.getElementById("email").value = "";
@@ -237,19 +247,31 @@ function agregarAlCarrito() {
   const prod = productosDisponibles.find(p => p.id === prodId);
   if (!prod) return;
 
+  // Validación: stock en cero
+  if (prod.stock_quantity === 0) {
+    document.getElementById("pedido-error").textContent = "No quedan unidades del producto";
+    return;
+  }
+
   // Verificar stock disponible
   const existente = carrito.find(item => item.id === prodId);
-  const cantidadTotal = (existente ? existente.stock_quantity : 0) + cantidad;
 
-  if (cantidadTotal > prod.stock_quantity) {
+  if (cantidad > prod.stock_quantity) {
     document.getElementById("pedido-error").textContent = `Solo hay ${prod.stock_quantity} unidades disponibles de este producto.`;
     return;
   }
-  
+
   if (existente) {
     existente.stock_quantity += cantidad;
   } else {
     carrito.push({ id: prodId, title: prod.title, stock_quantity: cantidad });
+  }
+
+  // Actualizar el stock del producto en la lista
+  prod.stock_quantity -= cantidad;
+  const option = select.querySelector(`option[value="${prodId}"]`);
+  if (option) {
+    option.textContent = `${prod.title} (Stock: ${prod.stock_quantity})`;
   }
   
   mostrarCarrito();
@@ -260,11 +282,22 @@ function agregarAlCarrito() {
 function mostrarCarrito() {
   const ul = document.getElementById("carrito-lista");
   ul.innerHTML = "";
+  let total = 0;
   carrito.forEach(item => {
+    const prod = productosDisponibles.find(p => p.id === item.id);
+    const precio = prod && prod.price ? prod.price : 0;
+    total += precio * item.stock_quantity;
     const li = document.createElement("li");
-    li.textContent = `${item.title} (x${item.stock_quantity})`;
+    li.textContent = `${item.title} (x${item.stock_quantity})${precio ? ` - €${(precio * item.stock_quantity).toFixed(2)}` : ''}`;
     ul.appendChild(li);
   });
+  // Línea de total
+  if (carrito.length > 0) {
+    const liTotal = document.createElement("li");
+    liTotal.style.fontWeight = "bold";
+    liTotal.textContent = `Total: €${total.toFixed(2)}`;
+    ul.appendChild(liTotal);
+  }
 }
 
 async function comprarCarrito() {
@@ -315,10 +348,42 @@ function logout() {
   document.getElementById("pedido-form").style.display = "none";
   document.getElementById("user-info").style.display = "none";
   document.getElementById("logout-btn").style.display = "none";
+  document.getElementById("pedidos-usuario").style.display = "none";
 
   // Mostrar formulario de login
   document.getElementById("login-form").style.display = "block";
   document.getElementById("login-error").textContent = "";
   document.getElementById("pedido-error").textContent = "";
   document.getElementById("pedido-success").textContent = "";
+}
+
+async function cargarPedidosUsuario() {
+  const ul = document.getElementById("lista-pedidos");
+  ul.innerHTML = "Cargando...";
+  try {
+    const response = await fetchWithAuth(`${API_URL}/api/orders/`, { method: "GET" });
+    const data = await response.json();
+    ul.innerHTML = "";
+    if (Array.isArray(data) && data.length > 0) {
+      data.forEach(pedido => {
+        const li = document.createElement("li");
+        let info = `Pedido #${pedido.id} - Estado: ${pedido.status}`;
+        if (pedido.created_at) info += `\nFecha: ${new Date(pedido.created_at).toLocaleString()}`;
+        if (pedido.total) info += `\nTotal: €${pedido.total.toFixed(2)}`;
+        if (pedido.items && Array.isArray(pedido.items)) {
+          info += `\nProductos:`;
+          pedido.items.forEach(item => {
+            info += `\n  - ${item.product_title || item.title || 'Producto'} x${item.quantity}`;
+          });
+        }
+        li.textContent = info;
+        li.style.whiteSpace = "pre-line";
+        ul.appendChild(li);
+      });
+    } else {
+      ul.innerHTML = "No tienes pedidos en curso.";
+    }
+  } catch (error) {
+    ul.innerHTML = "Error al cargar pedidos.";
+  }
 }

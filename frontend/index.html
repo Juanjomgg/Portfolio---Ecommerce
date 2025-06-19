@@ -67,8 +67,27 @@
     }
     #logout-btn {
       background: #d32f2f;
-      margin-bottom: 1.5em;
-      max-width: 200px;
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      min-height: 38px;
+      max-width: 38px;
+      max-height: 38px;
+      border-radius: 8px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      margin-left: 10px;
+      margin-bottom: 0;
+    }
+    #logout-btn span {
+      pointer-events: none;
+      font-size: 0.5em;
     }
     #logout-btn:hover {
       background: #b71c1c;
@@ -83,8 +102,12 @@
 <body>
   <div class="container">
     <h1>Demo Login y Creación de Pedidos</h1>
-    <div id="user-info" style="display:none;"></div>
-    <button id="logout-btn" onclick="logout()" style="display:none;">Cerrar sesión</button>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1em;">
+      <div id="user-info" style="display:none;"></div>
+      <button id="logout-btn" onclick="logout()" style="display:none;">
+        <span title="Cerrar sesión">Sign out</span>
+      </button>
+    </div>
     <div id="login-form">
       <h2>Login</h2>
       <input type="email" id="email" placeholder="Email" required autocomplete="username">
@@ -94,6 +117,7 @@
     </div>
     <div id="pedido-form" style="display:none;">
       <h2>Crear Pedido</h2>
+      <button id="ver-pedidos-btn" type="button" style="margin-bottom: 1em;">Ver pedidos en curso</button>
       <div id="pedido-productos">
         <label>Producto:</label>
         <select id="producto-select"></select>
@@ -106,6 +130,11 @@
       <button type="button" onclick="comprarCarrito()">Comprar</button>
       <div id="pedido-error" class="error"></div>
       <div id="pedido-success" class="success"></div>
+    </div>
+    <div id="pedidos-usuario" style="display:none;">
+      <h2>Pedidos en curso</h2>
+      <button id="volver-crear-pedido-btn" type="button" style="margin-bottom: 1em;">Volver a crear pedido</button>
+      <ul id="lista-pedidos"></ul>
     </div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.3.2/jsencrypt.min.js"></script>

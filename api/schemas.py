@@ -42,15 +42,15 @@ class OrderItemCreateSchema(Schema): # Para crear un item dentro de un pedido
 # Schemas de Pedido
 class OrderSchema(ModelSchema):
     user: UserSchema
-    items: List[OrderItemSchema] = None  # Inicializar como None
+    items: List[OrderItemSchema]
 
-    @staticmethod
-    def resolve_items(obj):
-        return obj.orderitem_set.all()  # Obtener todos los items relacionados
+    @classmethod
+    def resolve_items(cls, obj):
+        return list(obj.items.all())  # Usar la relación 'items' explícita
 
     class Config:
         model = Order
-        model_fields = ['id', 'user', 'created_at', 'status', 'total_amount']
+        model_fields = ['id', 'user', 'created_at', 'status', 'total_amount', 'items']
 
 class OrderCreateSchema(Schema):
     items: List[OrderItemCreateSchema]
