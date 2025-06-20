@@ -50,7 +50,7 @@ class OrderSchema(ModelSchema):
 
     class Config:
         model = Order
-        model_fields = ['id', 'user', 'created_at', 'status', 'total_amount', 'items']
+        model_fields = ['id', 'user', 'created_at', 'status', 'total_amount']
 
 class OrderCreateSchema(Schema):
     items: List[OrderItemCreateSchema]
