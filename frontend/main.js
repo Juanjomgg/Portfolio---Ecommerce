@@ -406,7 +406,7 @@ registerForm.addEventListener('submit', async (e) => {
   const first_name = document.getElementById('register-firstname').value;
   const last_name = document.getElementById('register-lastname').value;
   try {
-    const res = await fetch('/api/users/register', {
+    const res = await fetch(`${API_URL}/api/users/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, password, first_name, last_name })
