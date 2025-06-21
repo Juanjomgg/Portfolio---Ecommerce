@@ -16,22 +16,63 @@ function showLoading(btn, loading) {
   }
 }
 
+function mostrarBotonesLoginRegistro(mostrar) {
+  const registerBtn = document.getElementById('register-btn');
+  const loginBtn = document.getElementById('login-btn');
+  if (registerBtn) registerBtn.style.display = mostrar ? '' : 'none';
+  if (loginBtn) loginBtn.style.display = mostrar ? '' : 'none';
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  // Si ya hay token, muestra el formulario de pedidos
-  if (accessToken) {
-    document.getElementById("pedido-form").style.display = "block";
-    document.getElementById("login-form").style.display = "none";
+  mostrarBotonesLoginRegistro(true);
+  document.getElementById("login-form").style.display = "none";
+  document.getElementById("register-form").style.display = "none";
+  document.getElementById("pedido-form").style.display = "none";
+  document.getElementById("pedidos-usuario").style.display = "none";
+
+  // Asignar eventos
+  const registerBtn = document.getElementById('register-btn');
+  const loginBtn = document.getElementById('login-btn');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const loginMessage = document.getElementById('login-message');
+  const cancelRegisterBtn = document.getElementById('cancel-register');
+  const verPedidosBtn = document.getElementById('ver-pedidos-btn');
+  const volverCrearPedidoBtn = document.getElementById('volver-crear-pedido-btn');
+
+  if (registerBtn && loginBtn && loginForm && registerForm && loginMessage && cancelRegisterBtn) {
+    registerBtn.addEventListener('click', () => {
+      mostrarBotonesLoginRegistro(true);
+      loginForm.style.display = 'none';
+      registerForm.style.display = 'block';
+      loginMessage.textContent = '';
+    });
+
+    loginBtn.addEventListener('click', () => {
+      mostrarBotonesLoginRegistro(true);
+      registerForm.style.display = 'none';
+      loginForm.style.display = 'block';
+      loginMessage.textContent = '';
+    });
+
+    cancelRegisterBtn.addEventListener('click', () => {
+      mostrarBotonesLoginRegistro(true);
+      registerForm.style.display = 'none';
+      loginForm.style.display = 'none';
+      loginMessage.textContent = '';
+    });
   }
 
-  document.getElementById("ver-pedidos-btn").onclick = function() {
-    document.getElementById("pedido-form").style.display = "none";
-    document.getElementById("pedidos-usuario").style.display = "block";
-    cargarPedidosUsuario();
-  };
-  document.getElementById("volver-crear-pedido-btn").onclick = function() {
-    document.getElementById("pedidos-usuario").style.display = "none";
-    document.getElementById("pedido-form").style.display = "block";
-  };
+  if (verPedidosBtn) {
+    verPedidosBtn.onclick = mostrarPedidosUsuario;
+  }
+  if (volverCrearPedidoBtn) {
+    volverCrearPedidoBtn.onclick = function() {
+      mostrarBotonesLoginRegistro(false);
+      document.getElementById("pedidos-usuario").style.display = "none";
+      document.getElementById("pedido-form").style.display = "block";
+    };
+  }
 });
 
 // Función para obtener la clave pública
@@ -118,11 +159,8 @@ async function login() {
     if (response.ok && data.access) {
       accessToken = data.access;
       userEmail = email;
-      document.getElementById("login-form").style.display = "none";
-      document.getElementById("pedido-form").style.display = "block";
+      loginUI();
       document.getElementById("login-error").textContent = "";
-      document.getElementById("user-info").style.display = "block";
-      document.getElementById("logout-btn").style.display = "flex";
       document.getElementById("user-info").textContent = `Usuario logueado: ${userEmail}`;
       // Limpiar campos
       document.getElementById("email").value = "";
@@ -273,7 +311,7 @@ function mostrarCarrito() {
     const precio = prod && prod.price ? prod.price : 0;
     total += precio * item.stock_quantity;
     const li = document.createElement("li");
-    li.textContent = `${item.title} (x${item.stock_quantity})${precio ? ` - €${(precio * item.stock_quantity).toFixed(2)}` : ''}`;
+    li.textContent = `${item.product.title} (x${item.stock_quantity})${precio ? ` - €${(precio * item.stock_quantity).toFixed(2)}` : ''}`;
     ul.appendChild(li);
   });
   // Línea de total
@@ -321,6 +359,15 @@ async function comprarCarrito() {
   }
 }
 
+function loginUI() {
+  mostrarBotonesLoginRegistro(false);
+  document.getElementById("login-form").style.display = "none";
+  document.getElementById("register-form").style.display = "none";
+  document.getElementById("pedido-form").style.display = "block";
+  document.getElementById("user-info").style.display = "block";
+  document.getElementById("logout-btn").style.display = "flex";
+}
+
 function logout() {
   // Limpiar datos de sesión
   accessToken = null;
@@ -334,11 +381,20 @@ function logout() {
   document.getElementById("logout-btn").style.display = "none";
   document.getElementById("pedidos-usuario").style.display = "none";
 
-  // Mostrar formulario de login
-  document.getElementById("login-form").style.display = "block";
+  // Mostrar solo los botones
+  mostrarBotonesLoginRegistro(true);
+  document.getElementById("login-form").style.display = "none";
+  document.getElementById("register-form").style.display = "none";
   document.getElementById("login-error").textContent = "";
   document.getElementById("pedido-error").textContent = "";
   document.getElementById("pedido-success").textContent = "";
+}
+
+function mostrarPedidosUsuario() {
+  mostrarBotonesLoginRegistro(false);
+  document.getElementById("pedido-form").style.display = "none";
+  document.getElementById("pedidos-usuario").style.display = "block";
+  cargarPedidosUsuario();
 }
 
 async function cargarPedidosUsuario() {
@@ -372,55 +428,3 @@ async function cargarPedidosUsuario() {
     ul.innerHTML = "Error al cargar pedidos.";
   }
 }
-
-const loginBtn = document.getElementById('login-btn');
-const registerBtn = document.getElementById('register-btn');
-const loginForm = document.getElementById('login-form');
-const registerForm = document.getElementById('register-form');
-const cancelRegisterBtn = document.getElementById('cancel-register');
-const loginMessage = document.getElementById('login-message');
-
-registerBtn.addEventListener('click', () => {
-  loginForm.style.display = 'none';
-  registerForm.style.display = 'block';
-  loginMessage.textContent = '';
-});
-
-loginBtn.addEventListener('click', () => {
-  registerForm.style.display = 'none';
-  loginForm.style.display = 'block';
-  loginMessage.textContent = '';
-});
-
-cancelRegisterBtn.addEventListener('click', () => {
-  registerForm.style.display = 'none';
-  loginForm.style.display = 'block';
-  loginMessage.textContent = '';
-});
-
-registerForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const username = document.getElementById('register-username').value;
-  const email = document.getElementById('register-email').value;
-  const password = document.getElementById('register-password').value;
-  const first_name = document.getElementById('register-firstname').value;
-  const last_name = document.getElementById('register-lastname').value;
-  try {
-    const res = await fetch(`${API_URL}/api/users/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password, first_name, last_name })
-    });
-    const data = await res.json();
-    if (res.ok && !data.detail) {
-      loginMessage.textContent = 'Usuario creado exitosamente. Ahora puedes iniciar sesión.';
-      registerForm.reset();
-      registerForm.style.display = 'none';
-      loginForm.style.display = 'block';
-    } else {
-      loginMessage.textContent = data.detail || 'Error al crear usuario.';
-    }
-  } catch (err) {
-    loginMessage.textContent = 'Error de red o del servidor.';
-  }
-});
