@@ -14,19 +14,16 @@ from .schemas import (
     TokenSchema, TokenRequest, RefreshTokenSchema, ErrorMessageSchema,
     PublicKeySchema, EncryptedTokenRequest
 )
-from datetime import datetime, timedelta
+from datetime import datetime
 from django.conf import settings
 from django.core.cache import cache
-from django.http import HttpResponse
 from functools import wraps
 import time
 from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import unpad
 # Cambiamos a PKCS1_v1_5 para compatibilidad con JSEncrypt
 from Crypto.Cipher import PKCS1_v1_5
-from Crypto.Cipher import PKCS1_OAEP
 import base64
-from ninja import Schema
 import os
 # Intentar descifrar con un centinela aleatorio
 from os import urandom
@@ -49,7 +46,7 @@ def rate_limit(key_prefix, limit=5, period=60):
     def decorator(view_func):
         @wraps(view_func)
         def wrapped_view(request, *args, **kwargs):
-            # Get client IP and sanitize it
+            # Obtener IP del cliente
             ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
             if ip:
                 # Tomar solo la primera IP si hay varias
@@ -61,17 +58,17 @@ def rate_limit(key_prefix, limit=5, period=60):
             
             key = f"rl_{key_prefix}_{ip}"  # Formato seguro para memcached
             
-            # Get current requests count
+            # Obtener las solicitudes recientes del caché
             requests = cache.get(key, [])
             now = time.time()
             
-            # Clean old requests
+            # Limpiar solicitudes antiguas
             requests = [req for req in requests if req > now - period]
             
             if len(requests) >= limit:
                 return {"detail": "Too many requests"}, 429
             
-            # Add current request
+            # Agregar la solicitud actual
             requests.append(now)
             cache.set(key, requests, period)
             
@@ -96,46 +93,32 @@ def get_public_key(request):
     public_key = key.publickey().export_key('PEM').decode()
     return PublicKeySchema(key=public_key)
 
-# Añadir los endpoints de JWT
+
 @user_router.post("/token", response=TokenSchema|ErrorMessageSchema, auth=None)
 @rate_limit("login", limit=5, period=300)  # 5 intentos cada 5 minutos
 def obtain_token(request, data: EncryptedTokenRequest):
     if not data.encrypted_password:
         return ErrorMessageSchema(detail="No password provided")
 
-    print("=== Debug Info ===")
-    print(f"Email: {data.email}")
-    print(f"Encrypted password length: {len(data.encrypted_password)}")
-    print(f"First 50 chars of encrypted: {data.encrypted_password[:50]}")
-    
     try:
         # Intentar decodificar el base64
         try:
             encrypted_bytes = base64.b64decode(data.encrypted_password)
-            print(f"Base64 decode successful, got {len(encrypted_bytes)} bytes")
         except Exception as e:
-            print(f"Base64 decode error: {str(e)}")
             return ErrorMessageSchema(detail="Invalid password format")
 
         # Verificar que tenemos la clave privada correcta
-        print(f"Private key info: {key.size_in_bits()} bits, {key.size_in_bytes()} bytes")
-        
         # Usar PKCS1_v1_5 para compatibilidad con JSEncrypt
         cipher = PKCS1_v1_5.new(key)
         
-        # Imprimir información de debug
-        print(f"Encrypted data hex: {encrypted_bytes.hex()[:32]}...")
-        
         sentinel = urandom(32)  # Usar un centinela aleatorio
         password_bytes = cipher.decrypt(encrypted_bytes, sentinel)
-        print("Decryption attempt completed")
         
         if password_bytes == sentinel:
             raise ValueError("Decryption failed - got sentinel value")
         
         # Intentar decodificar como UTF-8
         password = password_bytes.decode('utf-8')
-        print(f"Successfully decrypted password of length: {len(password)}")
         
         if not password:
             return ErrorMessageSchema(detail="Empty password after decryption")
@@ -163,10 +146,8 @@ def obtain_token(request, data: EncryptedTokenRequest):
         return response
         
     except ValueError as e:
-        print(f"Decryption validation error: {str(e)}")
         return ErrorMessageSchema(detail="Invalid encrypted data - decryption failed")
     except Exception as e:
-        print(f"Detailed error: {type(e).__name__} - {str(e)}")
         return ErrorMessageSchema(detail="Decryption error")
 
 @user_router.post("/token/refresh", response=TokenSchema, auth=None)
@@ -242,6 +223,7 @@ def create_order(request, payload: OrderCreateSchema):
             product = Product.objects.select_for_update().get(id=item_data.product_id) # Bloquear producto para evitar race conditions
         except Product.DoesNotExist:
             # Si un producto no existe, se puede cancelar toda la orden o ignorar el item.
+            # No debería de pasar ya que el frontend envia solo productos válidos recuperados de la API
             #transaction.set_rollback(True) # Marcar para rollback
             return {"detail": f"Product with id {item_data.product_id} not found"}, 404
         if product.stock_quantity < item_data.quantity:

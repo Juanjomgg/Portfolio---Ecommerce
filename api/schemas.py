@@ -1,7 +1,6 @@
 from ninja import Schema, ModelSchema
 from typing import List, Optional
-from datetime import datetime
-from .models import Product, Order, OrderItem, CustomUser # o from django.contrib.auth.models import User
+from .models import Product, Order, OrderItem, CustomUser
 
 # Schemas de Usuario
 class UserSchema(ModelSchema):

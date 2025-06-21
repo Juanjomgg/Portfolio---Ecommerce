@@ -108,13 +108,27 @@
         <span title="Cerrar sesión">Sign out</span>
       </button>
     </div>
-    <form id="login-form" onsubmit="event.preventDefault(); login();">
-      <h2>Login</h2>
-      <input type="email" id="email" placeholder="Email" required autocomplete="username">
-      <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
-      <button type="submit">Iniciar sesión</button>
-      <div id="login-error" class="error"></div>
-    </form>
+    <div id="login-container">
+      <button id="register-btn" type="button">Crear usuario</button>
+      <button id="login-btn" type="button">Iniciar sesión</button>
+      <form id="login-form" onsubmit="event.preventDefault(); login();" style="display:none;">
+        <h2>Login</h2>
+        <input type="email" id="email" placeholder="Email" required autocomplete="username">
+        <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
+        <button type="submit">Iniciar sesión</button>
+        <div id="login-error" class="error"></div>
+      </form>
+      <form id="register-form" style="display:none;">
+        <input type="text" id="register-username" placeholder="Usuario" required />
+        <input type="email" id="register-email" placeholder="Email" required />
+        <input type="password" id="register-password" placeholder="Contraseña" required />
+        <input type="text" id="register-firstname" placeholder="Nombre (opcional)" />
+        <input type="text" id="register-lastname" placeholder="Apellido (opcional)" />
+        <button type="submit">Crear cuenta</button>
+        <button type="button" id="cancel-register">Cancelar</button>
+      </form>
+      <div id="login-message"></div>
+    </div>
     <div id="pedido-form" style="display:none;">
       <h2>Crear Pedido</h2>
       <button id="ver-pedidos-btn" type="button" style="margin-bottom: 1em;">Ver pedidos en curso</button>
