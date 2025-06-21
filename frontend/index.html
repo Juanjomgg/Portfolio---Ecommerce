@@ -108,13 +108,13 @@
         <span title="Cerrar sesión">Sign out</span>
       </button>
     </div>
-    <div id="login-form">
+    <form id="login-form" onsubmit="event.preventDefault(); login();">
       <h2>Login</h2>
       <input type="email" id="email" placeholder="Email" required autocomplete="username">
       <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
-      <button onclick="login()">Iniciar sesión</button>
+      <button type="submit">Iniciar sesión</button>
       <div id="login-error" class="error"></div>
-    </div>
+    </form>
     <div id="pedido-form" style="display:none;">
       <h2>Crear Pedido</h2>
       <button id="ver-pedidos-btn" type="button" style="margin-bottom: 1em;">Ver pedidos en curso</button>
